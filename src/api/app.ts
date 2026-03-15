@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
 import { config } from '@/config';
+import { correlationIdMiddleware, httpLogger } from '@/core/logger';
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use(
     legacyHeaders: true,
   })
 );
+app.use(correlationIdMiddleware);
+app.use(httpLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

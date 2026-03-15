@@ -11,6 +11,9 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(100),
 
   CORS_ORIGIN: z.string().nonempty().default('http://localhost:3000'),
+
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
 });
 
 const parseEnv = () => {
@@ -37,6 +40,11 @@ export const config = {
     rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
     rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
     corsOrigin: env.CORS_ORIGIN,
+  },
+
+  logging: {
+    level: env.LOG_LEVEL,
+    format: env.LOG_FORMAT,
   },
 
   isDevelopment: env.NODE_ENV === 'development',
