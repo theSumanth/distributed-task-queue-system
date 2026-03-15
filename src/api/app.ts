@@ -3,7 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
-import { config } from "@/api/config";
+import { config } from "@/config";
 
 const app = express();
 
