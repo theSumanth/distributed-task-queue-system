@@ -1,9 +1,9 @@
-import cors from "cors";
-import express from "express";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import cors from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
-import { config } from "@/config";
+import { config } from '@/config';
 
 const app = express();
 
@@ -15,7 +15,7 @@ app.use(
     limit: config.security.rateLimitMaxRequests,
     standardHeaders: true,
     legacyHeaders: true,
-  }),
+  })
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

@@ -19,7 +19,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "format": "prettier --no-error-on-unmatched-pattern --write \"src/**/*.ts\"",
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"src/**/*.ts\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
