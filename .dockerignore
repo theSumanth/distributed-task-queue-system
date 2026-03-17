@@ -1,0 +1,40 @@
+# dependencies
+node_modules
+npm-debug.log
+
+# build output
+dist
+build
+coverage
+
+# environment files
+.env
+.env.*
+!.env.example
+
+# logs
+logs
+*.log
+
+# git
+.git
+.gitignore
+
+# docker files not needed in image
+docker-compose.yml
+
+# documentation
+README.md
+docs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# editor files
+.vscode
+.idea
+
+# tests
+tests
+__tests__

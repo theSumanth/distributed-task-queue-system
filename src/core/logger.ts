@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import pino, { TransportTargetOptions } from 'pino';
+import pino, { type TransportTargetOptions } from 'pino';
 import { pinoHttp } from 'pino-http';
 import type { Request, Response, NextFunction } from 'express';
 

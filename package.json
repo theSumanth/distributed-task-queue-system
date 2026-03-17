@@ -21,7 +21,8 @@
     "start": "node dist/index.js",
     "lint": "eslint .",
     "format": "prettier --no-error-on-unmatched-pattern --write \"src/**/*.ts\"",
-    "format:check": "prettier --no-error-on-unmatched-pattern --check \"src/**/*.ts\""
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
