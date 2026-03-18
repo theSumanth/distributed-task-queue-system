@@ -35,3 +35,35 @@ export class InternalError extends AppError {
     super('INTERNAL_ERROR', message, 500, details);
   }
 }
+
+export interface ErrorResponseShape {
+  code: string;
+  message: string;
+  details?: unknown;
+  statusCode: number;
+}
+
+export const toErrorResponse = (error: unknown): ErrorResponseShape => {
+  if (error instanceof AppError) {
+    return {
+      code: error.code,
+      message: error.message,
+      statusCode: error.statusCode,
+      details: error.details,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      code: 'INTERNAL_ERROR',
+      message: error.message,
+      statusCode: 500,
+    };
+  }
+
+  return {
+    code: 'INTERNAL_ERROR',
+    message: 'An unknown error occured',
+    statusCode: 500,
+  };
+};
