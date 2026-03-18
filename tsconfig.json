@@ -1,4 +1,5 @@
 {
+  "references": [{ "path": "./tsconfig.node.json" }],
   "compilerOptions": {
     /* Language and Environment */
     "target": "ES2022",
@@ -6,6 +7,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
+
+    "types": ["node"],
 
     /* Emit */
     "outDir": "./dist",
