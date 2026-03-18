@@ -18,7 +18,9 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
 
-      references: [{ path: './tsconfig.node.json' }],
+      parserOptions: {
+        project: ['./tsconfig.json', './tsconfig.node.json'],
+      },
 
       globals: {
         ...globals.node,
