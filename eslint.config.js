@@ -1,11 +1,11 @@
-import js from "@eslint/js";
-import globals from "globals";
-import tseslint from "typescript-eslint";
-import prettier from "eslint-config-prettier";
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ["dist", "node_modules"],
+    ignores: ['dist', 'node_modules'],
   },
 
   js.configs.recommended,
@@ -13,14 +13,12 @@ export default [
   ...tseslint.configs.recommended,
 
   {
-    files: ["**/*.ts"],
+    files: ['**/*.ts'],
 
     languageOptions: {
       parser: tseslint.parser,
 
-      parserOptions: {
-        project: "./tsconfig.eslint.json",
-      },
+      references: [{ path: './tsconfig.node.json' }],
 
       globals: {
         ...globals.node,
@@ -28,11 +26,8 @@ export default [
     },
 
     rules: {
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/no-explicit-any": "warn",
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
 
