@@ -8,7 +8,7 @@ export class AppError extends Error {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    Error.captureStackTrace(this, this.constructor);
+    // Error.captureStackTrace(this, this.constructor);
   }
 }
 

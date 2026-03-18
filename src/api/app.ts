@@ -28,14 +28,16 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/health', healthRouter);
 
-app.use((req, _res) => {
-  throw new NotFoundError(`Route not found: ${req.method} ${req.path}`);
+app.use((req, res) => {
+  sendError(res, 404, 'NOT_FOUND', `Route not found: ${req.method} ${req.originalUrl}`);
 });
 
-app.use((error: unknown, _req: express.Request, res: express.Response) => {
-  const normalized = toErrorResponse(error);
-  const { code, message, statusCode, details } = normalized;
-  sendError(res, statusCode, code, message, details);
-});
+app.use(
+  (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const normalized = toErrorResponse(error);
+    const { code, message, statusCode, details } = normalized;
+    sendError(res, statusCode, code, message, details);
+  }
+);
 
 export { app };
