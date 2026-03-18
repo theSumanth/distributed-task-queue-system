@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { config } from '@/config';
 import { correlationIdMiddleware, httpLogger } from '@/core/logger';
 import { healthRouter } from './routes/health.routes';
-import { NotFoundError, toErrorResponse } from './errors/app-error';
+import { toErrorResponse } from './errors/app-error';
 import { sendError } from './utils/response';
 
 const app = express();
