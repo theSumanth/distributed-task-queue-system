@@ -22,7 +22,10 @@
     "lint": "eslint .",
     "format": "prettier --no-error-on-unmatched-pattern --write \"src/**/*.ts\"",
     "format:check": "prettier --no-error-on-unmatched-pattern --check \"src/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:up": "tsx src/database/migrate.ts up",
+    "migrate:down": "tsx src/database/migrate.ts down",
+    "db:setup": "npm run migrate:up"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
