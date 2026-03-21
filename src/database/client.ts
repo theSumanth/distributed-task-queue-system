@@ -30,6 +30,11 @@ const createPool = (): Pool => {
 
 export const dbPool = createPool();
 
+dbPool.on('error', (err) => {
+  console.error('Unexpected DB pool error', err);
+  process.exit(1);
+});
+
 export const query = async <T extends QueryResultRow = QueryResultRow>(
   text: string,
   values?: unknown[]
