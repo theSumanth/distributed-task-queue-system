@@ -5,6 +5,7 @@ import { parseAppConfig } from './app.config';
 import { parseSecurityConfig } from './security.config';
 import { parseLoggingConfig } from './logging.config';
 import { parseDatabaseConfig } from './database.config';
+import { logger } from '@/core/logger';
 
 dotenv.config();
 
@@ -18,12 +19,11 @@ const parseConfig = () => {
     return { app, database, security, logging };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Invalid environment variables:');
-      console.error(z.treeifyError(error).errors);
+      logger.error(z.treeifyError(error).errors, 'Invalid environment variables:');
       process.exit(1);
     }
 
-    console.error(error);
+    logger.error(error, 'Unexpected error while parsing Config');
     process.exit(1);
   }
 };

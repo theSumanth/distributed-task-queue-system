@@ -17,7 +17,7 @@ const prettyTransport: TransportTargetOptions | undefined =
       }
     : undefined;
 
-const logger = pino({
+export const logger = pino({
   level: config.logging.level,
   transport: prettyTransport,
   base: undefined,
