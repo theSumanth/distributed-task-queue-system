@@ -31,7 +31,6 @@ const getAppliedMigrationVersions = async (): Promise<Set<string>> => {
   const result = await query<MigrationRow>(
     `SELECT version FROM schema_migrations ORDER BY version ASC`
   );
-
   return new Set(result.rows.map((row) => row.version));
 };
 
@@ -45,6 +44,17 @@ const applyMigration = async (filename: string): Promise<void> => {
   await withTransaction(async (client) => {
     await client.query(sql);
     await client.query(`INSERT INTO schema_migrations (version) VALUES ($1)`, [version]);
+  });
+};
+
+const rollbackMigration = async (version: string): Promise<void> => {
+  const downFile = `${version}.down.sql`;
+  const fullPath = path.join(migrationsDir, downFile);
+  const sql = await fs.readFile(fullPath, 'utf-8');
+
+  await withTransaction(async (client) => {
+    await client.query(sql);
+    await client.query(`DELETE FROM schema_migrations WHERE version = $1`, [version]);
   });
 };
 
@@ -66,6 +76,27 @@ export const migrateUp = async (): Promise<void> => {
   }
 };
 
+export const migrateDown = async (): Promise<void> => {
+  await ensureMigrationsTable();
+  const result = await query<MigrationRow>(
+    `SELECT version FROM schema_migrations ORDER BY applied_at DESC LIMIT 1`
+  );
+  if (result.rows.length === 0) {
+    logger.info('No migrations to rollback');
+    return;
+  }
+
+  const latest = result.rows.at(0);
+  if (!latest) {
+    logger.info('No migrations to rollback');
+    return;
+  }
+
+  const version = latest.version;
+  await rollbackMigration(version);
+  logger.info(`Rolled back migration: ${version}`);
+};
+
 const main = async (): Promise<void> => {
   const direction = process.argv[2];
   if (direction !== 'up' && direction !== 'down') {
@@ -76,7 +107,7 @@ const main = async (): Promise<void> => {
     if (direction === 'up') {
       await migrateUp();
     } else {
-      // migrate down
+      await migrateDown();
     }
   } finally {
     await closeDbPool();
