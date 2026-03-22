@@ -1,55 +1,71 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
+import { parseAppConfig } from './app.config';
+import { parseSecurityConfig } from './security.config';
+import { parseLoggingConfig } from './logging.config';
+import { parseDatabaseConfig } from './database.config';
+import { logger } from '@/core/logger';
+
 dotenv.config();
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(8080),
-
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(100),
-
-  CORS_ORIGIN: z.string().nonempty().default('http://localhost:3000'),
-
-  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
-  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
-});
-
-const parseEnv = () => {
+const parseConfig = () => {
   try {
-    return envSchema.parse(process.env);
+    const app = parseAppConfig(process.env);
+    const database = parseDatabaseConfig(process.env);
+    const security = parseSecurityConfig(process.env);
+    const logging = parseLoggingConfig(process.env);
+
+    return { app, database, security, logging };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Invalid environment variables:');
-      console.error(z.treeifyError(error).errors);
+      logger.error(z.treeifyError(error).errors, 'Invalid environment variables:');
       process.exit(1);
     }
 
-    throw error;
+    logger.error(error, 'Unexpected error while parsing Config');
+    process.exit(1);
   }
 };
 
-const env = parseEnv();
+const env = parseConfig();
 
 export const config = {
-  nodeEnv: env.NODE_ENV,
-  port: env.PORT,
+  nodeEnv: env.app.NODE_ENV,
+  port: env.app.PORT,
+
+  database: {
+    url: env.database.DATABASE_URL,
+    host: env.database.DB_HOST,
+    port: env.database.DB_PORT,
+    name: env.database.DB_NAME,
+    password: env.database.DB_PASSWORD,
+    user: env.database.DB_USER,
+    sslEnabled: env.database.DB_SSL_ENABLED,
+  },
 
   security: {
-    rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
-    rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
-    corsOrigin: env.CORS_ORIGIN,
+    rateLimitWindowMs: env.security.RATE_LIMIT_WINDOW_MS,
+    rateLimitMaxRequests: env.security.RATE_LIMIT_MAX_REQUESTS,
+    corsOrigin: env.security.CORS_ORIGIN,
   },
 
   logging: {
-    level: env.LOG_LEVEL,
-    format: env.LOG_FORMAT,
+    level: env.logging.LOG_LEVEL,
+    format: env.logging.LOG_FORMAT,
   },
 
-  isDevelopment: env.NODE_ENV === 'development',
-  isStaging: env.NODE_ENV === 'staging',
-  isProduction: env.NODE_ENV === 'production',
+  isDevelopment: env.app.NODE_ENV === 'development',
+  isStaging: env.app.NODE_ENV === 'staging',
+  isProduction: env.app.NODE_ENV === 'production',
 } as const;
+
+export const redactedConfig = {
+  ...config,
+  database: {
+    ...config.database,
+    password: config.database.password ? '***redacted***' : undefined,
+  },
+};
 
 export type Config = typeof config;
