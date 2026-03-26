@@ -7,6 +7,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     ...(hasWorker ? { worker: 'src/worker.ts' } : {}),
+    migrate: 'src/database/migrate.ts',
   },
   format: ['cjs'],
   dts: true,
