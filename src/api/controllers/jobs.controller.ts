@@ -12,7 +12,7 @@ export class JobsController {
   }
 
   public createJob = async (
-    req: Request<null, null, CreateJobInput>,
+    req: Request<Record<string, never>, null, CreateJobInput>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
