@@ -8,3 +8,34 @@ export type JobStatus =
   | 'retrying'
   | 'dead_letter'
   | 'cancelled';
+
+export interface CreateJobInput {
+  type: JobType;
+  payload: Record<string, unknown>;
+  priority?: JobPriority;
+  delayMs?: number;
+  runAt?: string;
+  cron?: string;
+  maxRetries?: number;
+}
+
+export interface JobRecord {
+  id: string;
+  queueJobId: string | null;
+  type: JobType;
+  status: JobStatus;
+  priority: JobPriority;
+  payload: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  error: Record<string, unknown> | null;
+  attempts: number;
+  maxRetries: number;
+  delayMs: number;
+  runAt: string | null;
+  cron: string | null;
+  createdAt: string;
+  updatedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  failedAt: string | null;
+}

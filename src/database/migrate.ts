@@ -3,11 +3,10 @@ import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { closeDbPool, query, withTransaction } from './client';
-import { logger } from '@/core/logger';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrationsDir = path.resolve(__dirname, 'migrations');
+const migrationsDir = path.resolve(__dirname, 'database', 'migrations');
 
 interface MigrationRow {
   version: string;
@@ -17,7 +16,7 @@ const ensureMigrationsTable = async (): Promise<void> => {
   await query(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version TEXT PRIMARY KEY,
-			applied_at TIMESTAMPZ NOT NULL DEFAULT NOW()
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
   `);
 };
@@ -68,11 +67,11 @@ export const migrateUp = async (): Promise<void> => {
   const pending = allFiles.filter((file) => !appliedVersions.has(migrationVersionFromFile(file)));
   for (const migrationFile of pending) {
     await applyMigration(migrationFile);
-    logger.info(`Applied Migration: ${migrationFile}`);
+    console.log(`Applied Migration: ${migrationFile}`);
   }
 
   if (pending.length === 0) {
-    logger.info('No pending migrations');
+    console.log('No pending migrations');
   }
 };
 
@@ -82,19 +81,19 @@ export const migrateDown = async (): Promise<void> => {
     `SELECT version FROM schema_migrations ORDER BY applied_at DESC LIMIT 1`
   );
   if (result.rows.length === 0) {
-    logger.info('No migrations to rollback');
+    console.log('No migrations to rollback');
     return;
   }
 
   const latest = result.rows.at(0);
   if (!latest) {
-    logger.info('No migrations to rollback');
+    console.log('No migrations to rollback');
     return;
   }
 
   const version = latest.version;
   await rollbackMigration(version);
-  logger.info(`Rolled back migration: ${version}`);
+  console.log(`Rolled back migration: ${version}`);
 };
 
 const main = async (): Promise<void> => {
@@ -115,6 +114,6 @@ const main = async (): Promise<void> => {
 };
 
 void main().catch((error) => {
-  logger.error('Failed to do migrations', error);
+  console.error('Failed to do migrations', error);
   process.exit(1);
 });

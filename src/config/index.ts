@@ -1,3 +1,4 @@
+import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -5,9 +6,12 @@ import { parseAppConfig } from './app.config';
 import { parseSecurityConfig } from './security.config';
 import { parseLoggingConfig } from './logging.config';
 import { parseDatabaseConfig } from './database.config';
-import { logger } from '@/core/logger';
 
-dotenv.config();
+const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
+
+dotenv.config({
+  path: path.resolve(process.cwd(), envFile),
+});
 
 const parseConfig = () => {
   try {
@@ -19,11 +23,11 @@ const parseConfig = () => {
     return { app, database, security, logging };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logger.error(z.treeifyError(error).errors, 'Invalid environment variables:');
+      console.error(z.treeifyError(error).errors, 'Invalid environment variables:');
       process.exit(1);
     }
 
-    logger.error(error, 'Unexpected error while parsing Config');
+    console.error(error, 'Unexpected error while parsing Config');
     process.exit(1);
   }
 };
