@@ -39,3 +39,12 @@ export interface JobRecord {
   completedAt: string | null;
   failedAt: string | null;
 }
+
+export interface JobEventRecord {
+  id: number;
+  jobId: string;
+  status: JobStatus;
+  message: string;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}
