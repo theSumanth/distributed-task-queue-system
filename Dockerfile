@@ -23,6 +23,8 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
+COPY --from=builder /app/src/database/migrations ./dist/database/migrations
+
 EXPOSE 8080
 
 CMD ["node", "dist/index.cjs"]

@@ -1,7 +1,6 @@
 import { Pool, type PoolClient, type PoolConfig, type QueryResult, type QueryResultRow } from 'pg';
 
 import { config } from '@/config';
-import { logger } from '@/core/logger';
 
 const createPool = (): Pool => {
   const baseConfig = {
@@ -32,7 +31,7 @@ const createPool = (): Pool => {
 export const dbPool = createPool();
 
 dbPool.on('error', (error) => {
-  logger.error(error, 'Unexpected DB pool error');
+  console.error(error);
   process.exit(1);
 });
 
@@ -50,7 +49,6 @@ export const withTransaction = async <T>(fn: (client: PoolClient) => Promise<T>)
     return result;
   } catch (error) {
     await client.query('ROLLBACK');
-    logger.error(error, 'Transaction Failed');
     throw error;
   } finally {
     client.release();
