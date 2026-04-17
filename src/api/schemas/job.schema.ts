@@ -19,3 +19,10 @@ export const createJobSchema = z
       });
     }
   });
+
+export const outboxJobEnqueueSchema = createJobSchema.extend({
+  jobId: z.uuid(),
+});
+
+export type OutboxJobEnqueuePayload = z.infer<typeof outboxJobEnqueueSchema>;
+export type CreateJobSchemaType = z.infer<typeof createJobSchema>;
