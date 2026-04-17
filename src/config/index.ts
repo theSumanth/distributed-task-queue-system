@@ -77,6 +77,8 @@ export const config = {
   outbox: {
     pollIntervalMs: env.outbox.OUTBOX_POLL_INTERVAL_MS,
     batchSize: env.outbox.OUTBOX_BATCH_SIZE,
+    maxAttempts: env.outbox.OUTBOX_MAX_ATTEMPTS,
+    backoffBaseMs: env.outbox.OUTBOX_BACKOFF_BASE_MS,
   },
 
   security: {

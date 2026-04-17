@@ -62,6 +62,19 @@ export class OutboxRepository {
     );
   }
 
+  public async markFailed(id: number): Promise<void> {
+    const executor = createExecutor();
+
+    await executor.query(
+      `
+      UPDATE outbox_events
+      SET status = 'failed'
+      WHERE id = $1
+      `,
+      [id]
+    );
+  }
+
   public async incrementAttempts(id: number): Promise<void> {
     const executor = createExecutor();
 

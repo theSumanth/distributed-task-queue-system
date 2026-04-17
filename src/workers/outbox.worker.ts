@@ -8,11 +8,35 @@ import { config } from '@/config';
 const POLL_INTERVAL_MS = config.outbox.pollIntervalMs;
 const BATCH_SIZE = config.outbox.batchSize;
 
+const MAX_ATTEMPTS = config.outbox.maxAttempts;
+const BACKOFF_BASE_MS = config.outbox.backoffBaseMs;
+
+const shouldRetry = (attempts: number, createdAt: Date): boolean => {
+  const delay = BACKOFF_BASE_MS * Math.pow(2, attempts); // exponential
+  const nextAttemptTime = new Date(createdAt.getTime() + delay);
+
+  return Date.now() >= nextAttemptTime.getTime();
+};
+
 const processOutbox = async (): Promise<void> => {
   const events = await outboxRepository.getPending(BATCH_SIZE);
 
   for (const event of events) {
     try {
+      if (event.attempts >= MAX_ATTEMPTS) {
+        await outboxRepository.markFailed(event.id);
+
+        console.error('[Outbox Worker] Max attempts reached', {
+          eventId: event.id,
+        });
+
+        continue;
+      }
+
+      if (!shouldRetry(event.attempts, event.created_at)) {
+        continue;
+      }
+
       if (event.type === 'job.enqueue') {
         const payload = outboxJobEnqueueSchema.parse(event.payload);
 
@@ -30,6 +54,7 @@ const processOutbox = async (): Promise<void> => {
 
       console.error('[Outbox Worker] Failed event', {
         eventId: event.id,
+        attempts: event.attempts + 1,
         error,
       });
     }
