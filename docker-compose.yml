@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,27 +18,38 @@ services:
     ports:
       - '6379:6379'
 
-  migrate:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    command: node dist/migrate.cjs up
+    image: task-queue-app
+    command: ['node', 'dist/index.cjs']
+    env_file:
+      - .env.development
+    ports:
+      - '8080:8080'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  migrate:
+    image: task-queue-app
+    command: ['node', 'dist/database/migrate.cjs', 'up']
     env_file:
       - .env.development
     depends_on:
       postgres:
         condition: service_healthy
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  outbox-worker:
+    image: task-queue-app
+    command: ['node', 'dist/workers/outbox.worker.cjs']
     env_file:
       - .env.development
-    ports:
-      - '8080:8080'
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_started

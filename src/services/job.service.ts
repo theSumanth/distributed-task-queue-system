@@ -17,6 +17,9 @@ export class JobService {
     eventRepository: JobEventRepository,
     outboxRepository: OutboxRepository
   ) {
+    if (!jobRepository || !eventRepository || !outboxRepository) {
+      throw new Error('Missing dependencies in JobService');
+    }
     this.jobRepository = jobRepository;
     this.eventRepository = eventRepository;
     this.outboxRepository = outboxRepository;

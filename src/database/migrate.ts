@@ -6,7 +6,7 @@ import { closeDbPool, query, withTransaction } from './client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrationsDir = path.resolve(__dirname, 'database', 'migrations');
+const migrationsDir = path.resolve(__dirname, 'migrations');
 
 interface MigrationRow {
   version: string;
