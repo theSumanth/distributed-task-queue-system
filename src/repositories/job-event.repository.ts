@@ -1,5 +1,7 @@
-import { query } from '@/database/client';
+import type { PoolClient } from 'pg';
+
 import type { JobEventRecord, JobStatus } from '@/types/job';
+import { createExecutor } from '@/database/types';
 
 interface JobEventRow {
   id: number;
@@ -24,20 +26,23 @@ export class JobEventRepository {
     jobId: string,
     status: JobStatus,
     message: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
+    client?: PoolClient
   ): Promise<JobEventRecord> {
-    const result = await query<JobEventRow>(
+    const executor = createExecutor(client);
+
+    const result = await executor.query<JobEventRow>(
       `
-        INSERT INTO job_events (job_id, status, message, details)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-      `,
+    INSERT INTO job_events (job_id, status, message, details)
+    VALUES ($1,$2,$3,$4)
+    RETURNING *
+    `,
       [jobId, status, message, details ?? null]
     );
 
     const row = result.rows.at(0);
     if (!row) {
-      throw new Error('Faiiled to insert job event');
+      throw new Error('Failed to insert job event');
     }
 
     return mapRowDto(row);
