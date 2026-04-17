@@ -48,3 +48,10 @@ export interface JobEventRecord {
   details: Record<string, unknown> | null;
   createdAt: string;
 }
+
+export interface QueueJobPayload {
+  jobId: string;
+  type: JobType;
+  payload: Record<string, unknown>;
+  maxRetries: number;
+}

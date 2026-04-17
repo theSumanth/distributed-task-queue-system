@@ -1,5 +1,7 @@
-import { query } from '@/database/client';
+import type { PoolClient } from 'pg';
+
 import type { JobPriority, JobRecord, JobStatus, JobType } from '@/types/job';
+import { createExecutor } from '@/database/types';
 
 interface JobRow {
   id: string;
@@ -56,8 +58,10 @@ const mapRowDto = (row: JobRow): JobRecord => ({
 });
 
 export class JobRepository {
-  public async create(input: CreateJobRecordInput): Promise<JobRecord> {
-    const result = await query<JobRow>(
+  public async create(input: CreateJobRecordInput, client?: PoolClient): Promise<JobRecord> {
+    const executor = createExecutor(client);
+
+    const result = await executor.query<JobRow>(
       `
         INSERT INTO jobs (id, type, status, priority, payload, max_retries, delay_ms, run_at, cron)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
