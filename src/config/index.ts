@@ -8,6 +8,7 @@ import { parseLoggingConfig } from './logging.config';
 import { parseDatabaseConfig } from './database.config';
 import { parseRedisConfig } from './redis.config';
 import { parseQueueConfig } from './queue.config';
+import { parseOutboxConfig } from './outbox.config';
 
 const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
 
@@ -23,8 +24,9 @@ const parseConfig = () => {
     const logging = parseLoggingConfig(process.env);
     const redis = parseRedisConfig(process.env);
     const queue = parseQueueConfig(process.env);
+    const outbox = parseOutboxConfig(process.env);
 
-    return { app, database, security, logging, redis, queue };
+    return { app, database, security, logging, redis, queue, outbox };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(z.treeifyError(error).errors, 'Invalid environment variables:');
@@ -70,6 +72,11 @@ export const config = {
     },
     removeOnComplete: env.queue.QUEUE_REMOVE_ON_COMPLETE,
     removeOnFail: env.queue.QUEUE_REMOVE_ON_FAIL,
+  },
+
+  outbox: {
+    pollIntervalMs: env.outbox.OUTBOX_POLL_INTERVAL_MS,
+    batchSize: env.outbox.OUTBOX_BATCH_SIZE,
   },
 
   security: {

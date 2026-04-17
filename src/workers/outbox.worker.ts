@@ -3,9 +3,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { enqueueJob } from '@/core/queue/queue.producer';
 import { outboxJobEnqueueSchema } from '@/api/schemas/job.schema';
 import { outboxRepository } from '@/repositories';
+import { config } from '@/config';
 
-const POLL_INTERVAL_MS = 2000;
-const BATCH_SIZE = 10;
+const POLL_INTERVAL_MS = config.outbox.pollIntervalMs;
+const BATCH_SIZE = config.outbox.batchSize;
 
 const processOutbox = async (): Promise<void> => {
   const events = await outboxRepository.getPending(BATCH_SIZE);
