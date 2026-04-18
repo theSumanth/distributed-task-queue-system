@@ -10,6 +10,8 @@ import { parseRedisConfig } from './redis.config';
 import { parseQueueConfig } from './queue.config';
 import { parseOutboxConfig } from './outbox.config';
 import { parseQueueWorkerConfig } from './worker.config';
+import { parseFeaturesConfig } from './features.config';
+import { features } from 'node:process';
 
 const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
 
@@ -27,8 +29,9 @@ const parseConfig = () => {
     const queue = parseQueueConfig(process.env);
     const outbox = parseOutboxConfig(process.env);
     const worker = parseQueueWorkerConfig(process.env);
+    const features = parseFeaturesConfig(process.env);
 
-    return { app, database, security, logging, redis, queue, outbox, worker };
+    return { app, database, security, logging, redis, queue, outbox, worker, features };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(z.treeifyError(error).errors, 'Invalid environment variables:');
@@ -87,6 +90,11 @@ export const config = {
     batchSize: env.outbox.OUTBOX_BATCH_SIZE,
     maxAttempts: env.outbox.OUTBOX_MAX_ATTEMPTS,
     backoffBaseMs: env.outbox.OUTBOX_BACKOFF_BASE_MS,
+  },
+
+  features: {
+    deadLetterQueue: env.features.ENABLE_DEAD_LETTER_QUEUE,
+    scheduledJobs: env.features.ENABLE_SCHEDULED_JOBS,
   },
 
   security: {
