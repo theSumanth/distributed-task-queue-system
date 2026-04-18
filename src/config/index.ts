@@ -11,7 +11,6 @@ import { parseQueueConfig } from './queue.config';
 import { parseOutboxConfig } from './outbox.config';
 import { parseQueueWorkerConfig } from './worker.config';
 import { parseFeaturesConfig } from './features.config';
-import { features } from 'node:process';
 
 const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
 
