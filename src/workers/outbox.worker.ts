@@ -5,6 +5,7 @@ import { outboxDLQJobEnqueueSchema, outboxJobEnqueueSchema } from '@/api/schemas
 import { outboxRepository } from '@/repositories';
 import { config } from '@/config';
 import { withTransaction } from '@/database/client';
+import { logger } from '@/core/logger';
 
 const POLL_INTERVAL_MS = config.outbox.pollIntervalMs;
 const BATCH_SIZE = config.outbox.batchSize;
@@ -24,8 +25,31 @@ const processOutbox = async (): Promise<void> => {
     return outboxRepository.getPendingWithLock(BATCH_SIZE, client);
   });
 
+  if (events.length === 0) {
+    logger.debug('Outbox poll: no pending events');
+    return;
+  }
+
+  logger.info(
+    {
+      batchSize: events.length,
+    },
+    'Outbox batch fetched'
+  );
+
   for (const event of events) {
+    const start = Date.now();
+
     try {
+      logger.debug(
+        {
+          eventId: event.id,
+          type: event.type,
+          attempts: event.attempts,
+        },
+        'Processing outbox event'
+      );
+
       if (event.attempts >= MAX_ATTEMPTS) {
         await outboxRepository.markFailedWithAttempts(
           event.id,
@@ -33,10 +57,25 @@ const processOutbox = async (): Promise<void> => {
           MAX_ATTEMPTS,
           'max attempts reached'
         );
+
+        logger.warn(
+          {
+            eventId: event.id,
+          },
+          'Outbox event exceeded max attempts'
+        );
+
         continue;
       }
 
       if (!shouldRetry(event.attempts, event.created_at)) {
+        logger.debug(
+          {
+            eventId: event.id,
+            attempts: event.attempts,
+          },
+          'Skipping event due to backoff'
+        );
         continue;
       }
 
@@ -51,6 +90,15 @@ const processOutbox = async (): Promise<void> => {
             maxRetries: payload.maxRetries ?? 3,
           });
 
+          logger.info(
+            {
+              eventId: event.id,
+              jobId: payload.jobId,
+              type: payload.type,
+            },
+            'Outbox job enqueued'
+          );
+
           break;
         }
 
@@ -64,36 +112,69 @@ const processOutbox = async (): Promise<void> => {
             type: payload.type,
           });
 
+          logger.info(
+            {
+              eventId: event.id,
+              jobId: payload.jobId,
+              type: payload.type,
+            },
+            'Outbox DLQ job enqueued'
+          );
+
           break;
         }
 
         default:
-          console.warn('[Outbox Worker] Unknown event type:', event.type);
+          logger.warn(
+            {
+              eventId: event.id,
+              type: event.type,
+            },
+            'Unknown outbox event type'
+          );
       }
 
       await outboxRepository.markProcessed(event.id);
+
+      logger.debug(
+        {
+          eventId: event.id,
+          durationMs: Date.now() - start,
+        },
+        'Outbox event processed'
+      );
     } catch (error) {
       const nextAttempts = event.attempts + 1;
 
       await outboxRepository.markFailedWithAttempts(event.id, nextAttempts, MAX_ATTEMPTS, error);
 
-      console.error('[Outbox Worker] Failed event', {
-        eventId: event.id,
-        attempts: nextAttempts,
-        error,
-      });
+      logger.error(
+        {
+          eventId: event.id,
+          attempts: nextAttempts,
+          error,
+        },
+        'Outbox event failed'
+      );
     }
   }
 };
 
 const start = async (): Promise<void> => {
-  console.log('[Outbox Worker] started');
+  logger.info(
+    {
+      pollInterval: POLL_INTERVAL_MS,
+      batchSize: BATCH_SIZE,
+      maxAttempts: MAX_ATTEMPTS,
+    },
+    'Outbox Worker started'
+  );
 
   while (true) {
     try {
       await processOutbox();
     } catch (error) {
-      console.error('[Outbox Worker] loop error', error);
+      logger.error({ error }, 'Outbox worker loop error');
     }
 
     await sleep(POLL_INTERVAL_MS);
