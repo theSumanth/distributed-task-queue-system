@@ -8,6 +8,7 @@ import { OutboxRepository } from '@/repositories/outbox.repository';
 import type { CreateJobInput, JobRecord, JobType } from '@/types/job';
 import { NotFoundError } from '@/api/errors/app-error';
 import { config } from '@/config';
+import { logger } from '@/core/logger';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
@@ -124,6 +125,7 @@ export class JobService {
         client
       );
     });
+    logger.info({ type }, 'job completed');
   }
 
   public async onJobFailed(
@@ -177,6 +179,8 @@ export class JobService {
           client
         );
       }
+
+      logger.info({ type, durationMs }, 'job failed');
     });
   }
 

@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { JobType } from '@/types/job';
+import { logger } from '@/core/logger';
 
 export interface ProcessorContext {
   jobId: string;
@@ -14,6 +15,8 @@ export type ProcessorHandler = (
 type ProcessorMap = Record<JobType, ProcessorHandler>;
 
 const emailHandler: ProcessorHandler = async (payload, context) => {
+  logger.info(payload, 'email handler');
+
   await sleep(100);
 
   return {
@@ -24,6 +27,8 @@ const emailHandler: ProcessorHandler = async (payload, context) => {
 };
 
 const webhookHandler: ProcessorHandler = async (payload, context) => {
+  logger.info(payload, 'webhook handler');
+
   await sleep(100);
 
   return {
@@ -34,6 +39,8 @@ const webhookHandler: ProcessorHandler = async (payload, context) => {
 };
 
 const genericHandler: ProcessorHandler = async (payload, context) => {
+  logger.info(payload, 'generic handler');
+
   await sleep(50);
 
   return {
