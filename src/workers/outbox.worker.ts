@@ -87,7 +87,7 @@ const processOutbox = async (): Promise<void> => {
             ...payload,
             priority: payload.priority ?? 'normal',
             delayMs: payload.delayMs ?? 0,
-            maxRetries: payload.maxRetries ?? 3,
+            maxRetries: payload.maxRetries,
           });
 
           logger.info(

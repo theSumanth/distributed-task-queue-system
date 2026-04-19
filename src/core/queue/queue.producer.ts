@@ -21,7 +21,7 @@ export const enqueueJob = async (
   input: CreateJobInput & {
     priority: JobPriority;
     delayMs: number;
-    maxRetries: number;
+    maxRetries?: number;
   }
 ): Promise<void> => {
   const runAtMs = input.runAt ? new Date(input.runAt).getTime() : undefined;
@@ -38,7 +38,7 @@ export const enqueueJob = async (
       jobId,
       type: input.type,
       payload: input.payload,
-      maxRetries: input.maxRetries,
+      maxRetries: input.maxRetries ?? config.queue.maxRetries,
     },
     {
       jobId,
