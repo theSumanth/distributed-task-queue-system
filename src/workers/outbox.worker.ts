@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { enqueueJob } from '@/core/queue/queue.producer';
-import { outboxJobEnqueueSchema } from '@/api/schemas/job.schema';
+import { enqueueDeadLetter, enqueueJob } from '@/core/queue/queue.producer';
+import { outboxDLQJobEnqueueSchema, outboxJobEnqueueSchema } from '@/api/schemas/job.schema';
 import { outboxRepository } from '@/repositories';
 import { config } from '@/config';
 import { withTransaction } from '@/database/client';
@@ -20,27 +20,28 @@ const shouldRetry = (attempts: number, createdAt: Date): boolean => {
 };
 
 const processOutbox = async (): Promise<void> => {
-  await withTransaction(async (client) => {
-    const events = await outboxRepository.getPendingWithLock(BATCH_SIZE, client);
+  const events = await withTransaction(async (client) => {
+    return outboxRepository.getPendingWithLock(BATCH_SIZE, client);
+  });
 
-    for (const event of events) {
-      try {
-        if (event.attempts >= MAX_ATTEMPTS) {
-          await outboxRepository.markFailedWithAttempts(
-            event.id,
-            event.attempts,
-            MAX_ATTEMPTS,
-            'max attempts reached',
-            client
-          );
-          continue;
-        }
+  for (const event of events) {
+    try {
+      if (event.attempts >= MAX_ATTEMPTS) {
+        await outboxRepository.markFailedWithAttempts(
+          event.id,
+          event.attempts,
+          MAX_ATTEMPTS,
+          'max attempts reached'
+        );
+        continue;
+      }
 
-        if (!shouldRetry(event.attempts, event.created_at)) {
-          continue;
-        }
+      if (!shouldRetry(event.attempts, event.created_at)) {
+        continue;
+      }
 
-        if (event.type === 'job.enqueue') {
+      switch (event.type) {
+        case 'job.enqueue': {
           const payload = outboxJobEnqueueSchema.parse(event.payload);
 
           await enqueueJob(payload.jobId, {
@@ -49,28 +50,40 @@ const processOutbox = async (): Promise<void> => {
             delayMs: payload.delayMs ?? 0,
             maxRetries: payload.maxRetries ?? 3,
           });
+
+          break;
         }
 
-        await outboxRepository.markProcessed(event.id, client);
-      } catch (error) {
-        const nextAttempts = event.attempts + 1;
+        case 'job.dead_letter': {
+          const payload = outboxDLQJobEnqueueSchema.parse(event.payload);
 
-        await outboxRepository.markFailedWithAttempts(
-          event.id,
-          nextAttempts,
-          MAX_ATTEMPTS,
-          error,
-          client
-        );
+          await enqueueDeadLetter({
+            jobId: payload.jobId,
+            payload: payload.payload,
+            maxRetries: payload.maxRetries,
+            type: payload.type,
+          });
 
-        console.error('[Outbox Worker] Failed event', {
-          eventId: event.id,
-          attempts: nextAttempts,
-          error,
-        });
+          break;
+        }
+
+        default:
+          console.warn('[Outbox Worker] Unknown event type:', event.type);
       }
+
+      await outboxRepository.markProcessed(event.id);
+    } catch (error) {
+      const nextAttempts = event.attempts + 1;
+
+      await outboxRepository.markFailedWithAttempts(event.id, nextAttempts, MAX_ATTEMPTS, error);
+
+      console.error('[Outbox Worker] Failed event', {
+        eventId: event.id,
+        attempts: nextAttempts,
+        error,
+      });
     }
-  });
+  }
 };
 
 const start = async (): Promise<void> => {

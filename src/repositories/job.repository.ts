@@ -99,8 +99,8 @@ export class JobRepository {
     return mapRowDto(row);
   }
 
-  public async getById(id: string): Promise<JobRecord | null> {
-    const executor = createExecutor();
+  public async getById(id: string, client?: PoolClient): Promise<JobRecord | null> {
+    const executor = createExecutor(client);
     const result = await executor.query<JobRow>('SELECT * FROM jobs WHERE id = $1', [id]);
     if (result.rows.length === 0) {
       return null;
@@ -109,7 +109,10 @@ export class JobRepository {
     return row ? mapRowDto(row) : null;
   }
 
-  public async updateState(input: UpdateJobStateInput): Promise<JobRecord | null> {
+  public async updateState(
+    input: UpdateJobStateInput,
+    client?: PoolClient
+  ): Promise<JobRecord | null> {
     const updates: string[] = [];
     const values: unknown[] = [input.id];
 
@@ -148,7 +151,7 @@ export class JobRepository {
 
     updates.push('updated_at = NOW()');
 
-    const executor = createExecutor();
+    const executor = createExecutor(client);
     const result = await executor.query<JobRow>(
       `
         UPDATE jobs

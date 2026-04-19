@@ -7,7 +7,6 @@ import { OutboxRepository } from '@/repositories/outbox.repository';
 
 import type { CreateJobInput, JobRecord, JobType } from '@/types/job';
 import { NotFoundError } from '@/api/errors/app-error';
-import { enqueueDeadLetter } from '@/core/queue/queue.producer';
 import { config } from '@/config';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
@@ -106,15 +105,25 @@ export class JobService {
     result: Record<string, unknown>,
     durationMs: number
   ): Promise<void> {
-    await this.jobRepository.updateState({
-      id: jobId,
-      status: 'completed',
-      result,
-      error: null,
-      completedAt: nowIso(),
+    withTransaction(async (client) => {
+      await this.jobRepository.updateState(
+        {
+          id: jobId,
+          status: 'completed',
+          result,
+          error: null,
+          completedAt: nowIso(),
+        },
+        client
+      );
+      await this.eventRepository.create(
+        jobId,
+        'completed',
+        'Job completed',
+        { durationMs },
+        client
+      );
     });
-    console.log(type);
-    await this.eventRepository.create(jobId, 'completed', 'Job completed', { durationMs });
   }
 
   public async onJobFailed(
@@ -129,33 +138,46 @@ export class JobService {
     const isTerminal = attempts >= maxAttempts;
     const status = isTerminal ? 'dead_letter' : 'retrying';
 
-    const updated = await this.jobRepository.updateState({
-      id: jobId,
-      status,
-      attempts,
-      error: serialized,
-      failedAt: isTerminal ? nowIso() : null,
-    });
+    withTransaction(async (client) => {
+      const updated = await this.jobRepository.updateState(
+        {
+          id: jobId,
+          status,
+          attempts,
+          error: serialized,
+          failedAt: isTerminal ? nowIso() : null,
+        },
+        client
+      );
 
-    await this.eventRepository.create(
-      jobId,
-      status,
-      `Job ${isTerminal ? 'failed permanently' : 'retrying'}`,
-      {
-        attempts,
-        maxAttempts,
-        error: serialized,
-      }
-    );
-
-    if (isTerminal && updated && config.features.deadLetterQueue) {
-      await enqueueDeadLetter({
+      await this.eventRepository.create(
         jobId,
-        type: updated.type,
-        payload: updated.payload,
-        maxRetries: updated.maxRetries,
-      });
-    }
+        status,
+        `Job ${isTerminal ? 'failed permanently' : 'retrying'}`,
+        {
+          attempts,
+          maxAttempts,
+          error: serialized,
+        },
+        client
+      );
+
+      if (isTerminal && updated && config.features.deadLetterQueue) {
+        await this.outboxRepository.create(
+          {
+            aggregateId: jobId,
+            type: 'job.dead_letter',
+            payload: {
+              jobId,
+              type: updated.type,
+              payload: updated.payload,
+              maxRetries: updated.maxRetries,
+            },
+          },
+          client
+        );
+      }
+    });
   }
 
   public async onJobStalled(jobId: string): Promise<void> {

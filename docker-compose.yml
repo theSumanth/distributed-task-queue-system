@@ -7,16 +7,33 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
       - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: ['redis-server', '--appendonly', 'yes']
+    restart: unless-stopped
+
+  migrate:
+    image: task-queue-app
+    command: ['node', 'dist/database/migrate.cjs', 'up']
+    env_file:
+      - .env.development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
 
   app:
     build:
@@ -31,17 +48,25 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
 
-  migrate:
+  queue-worker:
     image: task-queue-app
-    command: ['node', 'dist/database/migrate.cjs', 'up']
+    command: ['node', 'dist/workers/queue.worker.cjs']
     env_file:
       - .env.development
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
   outbox-worker:
     image: task-queue-app
@@ -51,5 +76,12 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

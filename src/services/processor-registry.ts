@@ -58,6 +58,7 @@ export class ProcessorRegistry {
     const processor = this.processors[type];
 
     if (!processor) {
+      console.error('Missing processor', { type });
       throw new Error(`No processor found for job type: ${type}`);
     }
 

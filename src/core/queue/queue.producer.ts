@@ -43,7 +43,7 @@ export const enqueueJob = async (
     {
       jobId,
 
-      attempts: config.queue.maxRetries + 1,
+      attempts: (input.maxRetries ?? config.queue.maxRetries) + 1,
 
       backoff: {
         type: config.queue.backoff.type,
@@ -62,6 +62,7 @@ export const enqueueJob = async (
 
 export const enqueueDeadLetter = async (payload: QueueJobPayload): Promise<void> => {
   await getDeadLetterQueue().add(payload.type, payload, {
+    jobId: payload.jobId,
     removeOnComplete: config.queue.removeOnComplete,
     removeOnFail: config.queue.removeOnFail,
   });

@@ -15,10 +15,32 @@ const worker = new Worker<QueueJobPayload>(
   queueNames.main,
   async (job) => {
     const attempt = job.attemptsMade + 1;
-    return processorRegistry.execute(job.data.type, job.data.payload, {
+
+    logger.info(
+      {
+        jobId: job.data.jobId,
+        type: job.data.type,
+        attempt,
+      },
+      'Job execution started'
+    );
+
+    const result = await processorRegistry.execute(job.data.type, job.data.payload, {
       jobId: job.data.jobId,
       attempt,
     });
+
+    logger.info(
+      {
+        jobId: job.data.jobId,
+        type: job.data.type,
+        attempt,
+        result,
+      },
+      'Job execution finished'
+    );
+
+    return result;
   },
   {
     connection: getRedisConnection(),
@@ -29,7 +51,18 @@ const worker = new Worker<QueueJobPayload>(
 
 worker.on('active', (job) => {
   const jobId = job.id ?? job.data.jobId;
+
+  logger.info(
+    {
+      jobId: job.data.jobId,
+      type: job.data.type,
+      attempt: job.attemptsMade + 1,
+    },
+    'Job moved to active'
+  );
+
   startedAtByJob.set(jobId, Date.now());
+
   void jobService.onJobActive(job.data.jobId, job.attemptsMade + 1).catch((error) => {
     logger.error({ error, jobId: job.data.jobId }, 'Failed to persist active event');
   });
@@ -40,6 +73,16 @@ worker.on('completed', (job, result) => {
   const startedAt = startedAtByJob.get(jobId) ?? Date.now();
   const durationMs = Date.now() - startedAt;
   startedAtByJob.delete(jobId);
+
+  logger.info(
+    {
+      jobId: job.data.jobId,
+      type: job.data.type,
+      durationMs,
+      result,
+    },
+    'Job completed'
+  );
 
   const resultPayload =
     typeof result === 'object' && result !== null
