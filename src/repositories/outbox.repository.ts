@@ -32,8 +32,8 @@ export class OutboxRepository {
     );
   }
 
-  public async getPending(limit = 10): Promise<OutboxEvent[]> {
-    const executor = createExecutor();
+  public async getPendingWithLock(limit = 10, client?: PoolClient): Promise<OutboxEvent[]> {
+    const executor = createExecutor(client);
 
     const result = await executor.query<OutboxEvent>(
       `
@@ -41,6 +41,7 @@ export class OutboxRepository {
       FROM outbox_events
       WHERE status = 'pending'
       ORDER BY created_at ASC
+      FOR UPDATE SKIP LOCKED
       LIMIT $1
       `,
       [limit]
@@ -49,8 +50,8 @@ export class OutboxRepository {
     return result.rows;
   }
 
-  public async markProcessed(id: number): Promise<void> {
-    const executor = createExecutor();
+  public async markProcessed(id: number, client?: PoolClient): Promise<void> {
+    const executor = createExecutor(client);
 
     await executor.query(
       `
@@ -62,29 +63,26 @@ export class OutboxRepository {
     );
   }
 
-  public async markFailed(id: number): Promise<void> {
-    const executor = createExecutor();
+  public async markFailedWithAttempts(
+    id: number,
+    attempts: number,
+    maxAttempts: number,
+    error?: unknown,
+    client?: PoolClient
+  ): Promise<void> {
+    const executor = createExecutor(client);
+
+    const status = attempts >= maxAttempts ? 'failed' : 'pending';
 
     await executor.query(
       `
       UPDATE outbox_events
-      SET status = 'failed'
+      SET attempts = $2,
+          status = $3,
+          last_error = $4
       WHERE id = $1
       `,
-      [id]
-    );
-  }
-
-  public async incrementAttempts(id: number): Promise<void> {
-    const executor = createExecutor();
-
-    await executor.query(
-      `
-      UPDATE outbox_events
-      SET attempts = attempts + 1
-      WHERE id = $1
-      `,
-      [id]
+      [id, attempts, status, error ? String(error) : null]
     );
   }
 }

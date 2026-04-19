@@ -24,5 +24,13 @@ export const outboxJobEnqueueSchema = createJobSchema.extend({
   jobId: z.uuid(),
 });
 
+export const outboxDLQJobEnqueueSchema = z.object({
+  jobId: z.uuid(),
+  type: z.enum(['email', 'webhook', 'generic']),
+  payload: z.record(z.string(), z.unknown()),
+  maxRetries: z.coerce.number().int().nonnegative(),
+});
+
 export type OutboxJobEnqueuePayload = z.infer<typeof outboxJobEnqueueSchema>;
+export type OutboxDLQJobEnqueuePayload = z.infer<typeof outboxDLQJobEnqueueSchema>;
 export type CreateJobSchemaType = z.infer<typeof createJobSchema>;

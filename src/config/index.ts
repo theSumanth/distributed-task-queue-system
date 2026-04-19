@@ -9,6 +9,8 @@ import { parseDatabaseConfig } from './database.config';
 import { parseRedisConfig } from './redis.config';
 import { parseQueueConfig } from './queue.config';
 import { parseOutboxConfig } from './outbox.config';
+import { parseQueueWorkerConfig } from './worker.config';
+import { parseFeaturesConfig } from './features.config';
 
 const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
 
@@ -25,8 +27,10 @@ const parseConfig = () => {
     const redis = parseRedisConfig(process.env);
     const queue = parseQueueConfig(process.env);
     const outbox = parseOutboxConfig(process.env);
+    const worker = parseQueueWorkerConfig(process.env);
+    const features = parseFeaturesConfig(process.env);
 
-    return { app, database, security, logging, redis, queue, outbox };
+    return { app, database, security, logging, redis, queue, outbox, worker, features };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(z.treeifyError(error).errors, 'Invalid environment variables:');
@@ -74,11 +78,22 @@ export const config = {
     removeOnFail: env.queue.QUEUE_REMOVE_ON_FAIL,
   },
 
+  worker: {
+    concurrency: env.worker.WORKER_CONCURRENCY,
+    lockDuration: env.worker.WORKER_LOCK_DURATION,
+    lockRenewTime: env.worker.WORKER_LOCK_RENEW_TIME,
+  },
+
   outbox: {
     pollIntervalMs: env.outbox.OUTBOX_POLL_INTERVAL_MS,
     batchSize: env.outbox.OUTBOX_BATCH_SIZE,
     maxAttempts: env.outbox.OUTBOX_MAX_ATTEMPTS,
     backoffBaseMs: env.outbox.OUTBOX_BACKOFF_BASE_MS,
+  },
+
+  features: {
+    deadLetterQueue: env.features.ENABLE_DEAD_LETTER_QUEUE,
+    scheduledJobs: env.features.ENABLE_SCHEDULED_JOBS,
   },
 
   security: {
@@ -102,6 +117,10 @@ export const redactedConfig = {
   database: {
     ...config.database,
     password: config.database.password ? '***redacted***' : undefined,
+  },
+  redis: {
+    ...config.redis,
+    password: config.redis.password ? '***redacted***' : undefined,
   },
 };
 

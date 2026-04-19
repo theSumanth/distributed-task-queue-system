@@ -21,7 +21,7 @@ export const enqueueJob = async (
   input: CreateJobInput & {
     priority: JobPriority;
     delayMs: number;
-    maxRetries: number;
+    maxRetries?: number;
   }
 ): Promise<void> => {
   const runAtMs = input.runAt ? new Date(input.runAt).getTime() : undefined;
@@ -38,12 +38,12 @@ export const enqueueJob = async (
       jobId,
       type: input.type,
       payload: input.payload,
-      maxRetries: input.maxRetries,
+      maxRetries: input.maxRetries ?? config.queue.maxRetries,
     },
     {
       jobId,
 
-      attempts: config.queue.maxRetries + 1,
+      attempts: (input.maxRetries ?? config.queue.maxRetries) + 1,
 
       backoff: {
         type: config.queue.backoff.type,
@@ -62,6 +62,7 @@ export const enqueueJob = async (
 
 export const enqueueDeadLetter = async (payload: QueueJobPayload): Promise<void> => {
   await getDeadLetterQueue().add(payload.type, payload, {
+    jobId: payload.jobId,
     removeOnComplete: config.queue.removeOnComplete,
     removeOnFail: config.queue.removeOnFail,
   });

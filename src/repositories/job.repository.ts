@@ -36,6 +36,17 @@ export interface CreateJobRecordInput {
   cron: string | null;
 }
 
+export interface UpdateJobStateInput {
+  id: string;
+  status?: JobStatus;
+  attempts?: number;
+  result?: Record<string, unknown> | null;
+  error?: Record<string, unknown> | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  failedAt?: string | null;
+}
+
 const mapRowDto = (row: JobRow): JobRecord => ({
   id: row.id,
   queueJobId: row.queue_job_id,
@@ -86,5 +97,75 @@ export class JobRepository {
     }
 
     return mapRowDto(row);
+  }
+
+  public async getById(id: string, client?: PoolClient): Promise<JobRecord | null> {
+    const executor = createExecutor(client);
+    const result = await executor.query<JobRow>('SELECT * FROM jobs WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    const row = result.rows.at(0);
+    return row ? mapRowDto(row) : null;
+  }
+
+  public async updateState(
+    input: UpdateJobStateInput,
+    client?: PoolClient
+  ): Promise<JobRecord | null> {
+    const updates: string[] = [];
+    const values: unknown[] = [input.id];
+
+    if (input.status) {
+      values.push(input.status);
+      updates.push(`status = $${values.length}`);
+    }
+    if (typeof input.attempts === 'number') {
+      values.push(input.attempts);
+      updates.push(`attempts = $${values.length}`);
+    }
+    if (input.result !== undefined) {
+      values.push(input.result);
+      updates.push(`result = $${values.length}`);
+    }
+    if (input.error !== undefined) {
+      values.push(input.error);
+      updates.push(`error = $${values.length}`);
+    }
+    if (input.startedAt !== undefined) {
+      values.push(input.startedAt);
+      updates.push(`started_at = $${values.length}`);
+    }
+    if (input.completedAt !== undefined) {
+      values.push(input.completedAt);
+      updates.push(`completed_at = $${values.length}`);
+    }
+    if (input.failedAt !== undefined) {
+      values.push(input.failedAt);
+      updates.push(`failed_at = $${values.length}`);
+    }
+
+    if (updates.length === 0) {
+      return this.getById(input.id);
+    }
+
+    updates.push('updated_at = NOW()');
+
+    const executor = createExecutor(client);
+    const result = await executor.query<JobRow>(
+      `
+        UPDATE jobs
+        SET ${updates.join(', ')}
+        WHERE id = $1
+        RETURNING *
+      `,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+    const row = result.rows.at(0);
+    return row ? mapRowDto(row) : null;
   }
 }

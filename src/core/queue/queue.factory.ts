@@ -38,3 +38,11 @@ export const closeQueues = async (): Promise<void> => {
     deadLetterQueue = null;
   }
 };
+
+const mainQueueName = 'jobs';
+const deadLetterQueueName = 'jobs_dead_letter';
+
+export const queueNames = {
+  main: mainQueueName,
+  deadLetter: deadLetterQueueName,
+};
