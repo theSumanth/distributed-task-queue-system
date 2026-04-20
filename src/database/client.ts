@@ -12,7 +12,6 @@ const createPool = (): Pool => {
   if (config.database.url) {
     return new Pool({
       connectionString: config.database.url,
-      ssl: config.database.sslEnabled ? { rejectUnauthorized: false } : undefined,
       ...baseConfig,
     });
   }
