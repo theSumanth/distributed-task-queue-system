@@ -58,3 +58,11 @@ export const closeRedisConnection = async (): Promise<void> => {
     redis = null;
   }
 };
+
+export const pingRedis = async (): Promise<void> => {
+  const redisConnection = getRedisConnection();
+  if (redisConnection.status === 'wait' || redisConnection.status === 'end') {
+    await redisConnection.connect();
+  }
+  await redisConnection.ping();
+};
