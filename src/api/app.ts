@@ -9,6 +9,7 @@ import { toErrorResponse } from './errors/app-error';
 import { sendError } from './utils/response';
 import { healthRouter } from './routes/health.routes';
 import { jobsRouter } from './routes/jobs.routes';
+import { docsRouter } from './routes/docs.routes';
 
 const app = express();
 
@@ -27,9 +28,11 @@ app.use(httpLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use('/health', healthRouter);
+const apiBase = `/api/${config.apiVersion}`;
 
-app.use('/jobs', jobsRouter);
+app.use('/health', healthRouter);
+app.use(`${apiBase}/jobs`, jobsRouter);
+app.use(apiBase, docsRouter);
 
 app.use((req, res) => {
   sendError(res, 404, 'NOT_FOUND', `Route not found: ${req.method} ${req.originalUrl}`);
