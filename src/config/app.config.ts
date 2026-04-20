@@ -3,6 +3,8 @@ import z from 'zod';
 const appSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(8080),
+
+  API_VERSION: z.string().default('v1'),
 });
 
 export const parseAppConfig = (env: NodeJS.ProcessEnv) => {

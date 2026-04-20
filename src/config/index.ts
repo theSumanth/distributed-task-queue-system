@@ -49,6 +49,7 @@ const env = parseConfig();
 export const config = {
   nodeEnv: env.app.NODE_ENV,
   port: env.app.PORT,
+  apiVersion: env.app.API_VERSION,
 
   database: {
     url: env.database.DATABASE_URL,
