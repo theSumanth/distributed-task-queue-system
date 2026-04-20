@@ -2,7 +2,7 @@ import { Queue } from 'bullmq';
 
 import { config } from '@/config';
 import { getRedisConnection } from './redis.connection';
-import type { QueueJobPayload } from '@/types/job';
+import type { QueueJobPayload } from '@/api/schemas/job.schema';
 
 let mainQueue: Queue<QueueJobPayload> | null = null;
 let deadLetterQueue: Queue<QueueJobPayload> | null = null;

@@ -51,7 +51,8 @@
       "@/database/*": ["./src/database/*"],
       "@/repositories/*": ["./src/repositories/*"],
       "@/services/*": ["./src/services/*"],
-      "@/types/*": ["./src/types/*"]
+      "@/types/*": ["./src/types/*"],
+      "@/workers/*": ["./src/workers/*"]
     },
 
     /* Advanced */

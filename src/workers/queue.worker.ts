@@ -5,7 +5,7 @@ import { logger } from '@/core/logger';
 import { getRedisConnection, closeRedisConnection } from '@/core/queue/redis.connection';
 import { closeDbPool } from '@/database/client';
 import { jobService } from '@/services';
-import type { QueueJobPayload } from '@/types/job';
+import type { QueueJobPayload } from '@/api/schemas/job.schema';
 import { processorRegistry } from '@/services/processor-registry';
 import { queueNames } from '@/core/queue/queue.factory';
 
