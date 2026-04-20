@@ -12,11 +12,13 @@ import { parseOutboxConfig } from './outbox.config';
 import { parseQueueWorkerConfig } from './worker.config';
 import { parseFeaturesConfig } from './features.config';
 
-const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
+if (process.env['NODE_ENV'] !== 'production') {
+  const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
 
-dotenv.config({
-  path: path.resolve(process.cwd(), envFile),
-});
+  dotenv.config({
+    path: path.resolve(process.cwd(), envFile),
+  });
+}
 
 const parseConfig = () => {
   try {
