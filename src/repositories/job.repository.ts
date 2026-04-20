@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import type { JobPriority, JobRecord, JobStatus, JobType } from '@/types/job';
+import type { JobPriority, JobRecord, JobStatus, JobType } from '@/api/schemas/job.schema';
 import { createExecutor } from '@/database/types';
 
 interface JobRow {

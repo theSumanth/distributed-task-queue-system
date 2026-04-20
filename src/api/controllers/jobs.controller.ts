@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import type { JobService } from '@/services/job.service';
-import type { CreateJobInput } from '@/types/job';
+import type { CreateJobInput } from '@/api/schemas/job.schema';
 import { sendSuccess } from '../utils/response';
 
 export class JobsController {

@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import type { JobEventRecord, JobStatus } from '@/types/job';
+import type { JobEventRecord, JobStatus } from '@/api/schemas/job.schema';
 import { createExecutor } from '@/database/types';
 
 interface JobEventRow {

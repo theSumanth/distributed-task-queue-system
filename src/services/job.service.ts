@@ -5,7 +5,7 @@ import type { JobRepository } from '@/repositories/job.repository';
 import type { JobEventRepository } from '@/repositories/job-event.repository';
 import { OutboxRepository } from '@/repositories/outbox.repository';
 
-import type { CreateJobInput, JobRecord, JobType } from '@/types/job';
+import type { CreateJobInput, JobRecord, JobType } from '@/api/schemas/job.schema';
 import { NotFoundError } from '@/api/errors/app-error';
 import { config } from '@/config';
 import { logger } from '@/core/logger';

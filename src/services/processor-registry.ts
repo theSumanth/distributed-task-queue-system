@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { JobType } from '@/types/job';
+import type { JobType } from '@/api/schemas/job.schema';
 import { logger } from '@/core/logger';
 
 export interface ProcessorContext {

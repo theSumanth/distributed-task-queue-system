@@ -1,17 +1,22 @@
 import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { openApiSpec } from '@/api/openapi';
+import { generateOpenAPIDocument } from '@/api/docs/openapi.generator';
 
 const docsRouter = Router();
 
+const document = generateOpenAPIDocument();
+
 docsRouter.get('/openapi.json', (_req, res) => {
-  res.json(openApiSpec);
+  const freshDocument = generateOpenAPIDocument();
+
+  res.type('application/json');
+  res.send(freshDocument);
 });
 
 docsRouter.use(
   '/docs',
   swaggerUi.serve,
-  swaggerUi.setup(openApiSpec, {
+  swaggerUi.setup(document, {
     explorer: true,
     customSiteTitle: 'Distributed Task Queue API Docs',
   })

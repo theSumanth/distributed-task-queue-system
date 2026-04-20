@@ -1,7 +1,7 @@
 import { config } from '@/config';
 import { getMainQueue, getDeadLetterQueue } from './queue.factory';
 
-import type { CreateJobInput, JobPriority, QueueJobPayload } from '@/types/job';
+import type { CreateJobInput, JobPriority, QueueJobPayload } from '@/api/schemas/job.schema';
 
 const priorityToBullValue = (priority: JobPriority): number => {
   switch (priority) {
