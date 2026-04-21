@@ -106,7 +106,7 @@ export class JobService {
     result: Record<string, unknown>,
     durationMs: number
   ): Promise<void> {
-    withTransaction(async (client) => {
+    await withTransaction(async (client) => {
       await this.jobRepository.updateState(
         {
           id: jobId,
@@ -140,7 +140,7 @@ export class JobService {
     const isTerminal = attempts >= maxAttempts;
     const status = isTerminal ? 'dead_letter' : 'retrying';
 
-    withTransaction(async (client) => {
+    await withTransaction(async (client) => {
       const updated = await this.jobRepository.updateState(
         {
           id: jobId,
