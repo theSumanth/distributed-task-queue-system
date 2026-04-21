@@ -55,7 +55,7 @@ const mapRowDto = (row: JobRow): JobRecord => ({
   priority: row.priority,
   payload: row.payload,
   result: row.result,
-  error: row.result,
+  error: row.error,
   attempts: row.attempts,
   maxRetries: row.max_retries,
   delayMs: row.delay_ms,
