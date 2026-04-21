@@ -13,9 +13,7 @@ export const jobPrioritySchema = z.enum(['high', 'normal', 'low']).openapi({
 
 export const jobStatusSchema = z
   .enum(['queued', 'active', 'completed', 'failed', 'retrying', 'dead_letter', 'cancelled'])
-  .openapi({
-    example: 'queued',
-  });
+  .openapi({ example: 'queued' });
 
 export type JobType = z.infer<typeof jobTypeSchema>;
 export type JobPriority = z.infer<typeof jobPrioritySchema>;
@@ -83,6 +81,35 @@ export const jobRecordSchema = z
 
 export type JobRecord = z.infer<typeof jobRecordSchema>;
 
+export const listJobsQuerySchema = z
+  .object({
+    status: jobStatusSchema.optional(),
+    type: jobTypeSchema.optional(),
+    page: z.coerce.number().int().min(1).default(1).openapi({ example: 1 }),
+    limit: z.coerce.number().int().min(1).max(100).default(20).openapi({ example: 20 }),
+  })
+  .openapi('ListJobsQuery');
+
+export type ListJobsQuery = z.infer<typeof listJobsQuerySchema>;
+
+export const paginationMetaSchema = z
+  .object({
+    total: z.number().openapi({ example: 100 }),
+    page: z.number().openapi({ example: 1 }),
+    limit: z.number().openapi({ example: 20 }),
+    totalPages: z.number().openapi({ example: 5 }),
+  })
+  .openapi('PaginationMeta');
+
+export const listJobsResponseSchema = z
+  .object({
+    jobs: z.array(jobRecordSchema),
+    pagination: paginationMetaSchema,
+  })
+  .openapi('ListJobsResponse');
+
+export type ListJobsResponse = z.infer<typeof listJobsResponseSchema>;
+
 export const queueJobPayloadSchema = z.object({
   jobId: z.uuid(),
   type: jobTypeSchema,
@@ -105,19 +132,3 @@ export const outboxDLQJobEnqueueSchema = z.object({
 
 export type OutboxJobEnqueuePayload = z.infer<typeof outboxJobEnqueueSchema>;
 export type OutboxDLQJobEnqueuePayload = z.infer<typeof outboxDLQJobEnqueueSchema>;
-
-/**
- * ================================
- * JOB EVENTS
- * ================================
- */
-export const jobEventSchema = z.object({
-  id: z.number(),
-  jobId: z.uuid(),
-  status: jobStatusSchema,
-  message: z.string(),
-  details: z.record(z.string(), z.unknown()).nullable(),
-  createdAt: z.string(),
-});
-
-export type JobEventRecord = z.infer<typeof jobEventSchema>;
