@@ -3,6 +3,10 @@ import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
 extendZodWithOpenApi(z);
 
+// ================================
+// ENUMS
+// ================================
+
 export const jobTypeSchema = z.enum(['email', 'webhook', 'generic']).openapi({
   example: 'email',
 });
@@ -18,6 +22,10 @@ export const jobStatusSchema = z
 export type JobType = z.infer<typeof jobTypeSchema>;
 export type JobPriority = z.infer<typeof jobPrioritySchema>;
 export type JobStatus = z.infer<typeof jobStatusSchema>;
+
+// ================================
+// CREATE JOB
+// ================================
 
 export const createJobSchema = z
   .object({
@@ -50,6 +58,10 @@ export const createJobSchema = z
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 
+// ================================
+// JOB RECORD (DB shape → API response)
+// ================================
+
 export const jobRecordSchema = z
   .object({
     id: z.uuid(),
@@ -81,6 +93,39 @@ export const jobRecordSchema = z
 
 export type JobRecord = z.infer<typeof jobRecordSchema>;
 
+// ================================
+// JOB EVENTS
+// ================================
+
+export const jobEventSchema = z
+  .object({
+    id: z.number(),
+    jobId: z.uuid(),
+    status: jobStatusSchema,
+    message: z.string(),
+    details: z.record(z.string(), z.unknown()).nullable(),
+    createdAt: z.string(),
+  })
+  .openapi('JobEvent');
+
+export type JobEventRecord = z.infer<typeof jobEventSchema>;
+
+// ================================
+// GET JOB — job + full event history
+// ================================
+
+export const jobWithEventsSchema = jobRecordSchema
+  .extend({
+    events: z.array(jobEventSchema),
+  })
+  .openapi('JobWithEvents');
+
+export type JobWithEvents = z.infer<typeof jobWithEventsSchema>;
+
+// ================================
+// LIST JOBS — query params + response
+// ================================
+
 export const listJobsQuerySchema = z
   .object({
     status: jobStatusSchema.optional(),
@@ -109,6 +154,15 @@ export const listJobsResponseSchema = z
   .openapi('ListJobsResponse');
 
 export type ListJobsResponse = z.infer<typeof listJobsResponseSchema>;
+
+// ================================
+// GET JOBS — query param
+// ================================
+export const getJobQuerySchema = z.object({ id: z.uuid() });
+
+// ================================
+// QUEUE INTERNALS (outbox → bullmq)
+// ================================
 
 export const queueJobPayloadSchema = z.object({
   jobId: z.uuid(),

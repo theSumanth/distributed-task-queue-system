@@ -11,6 +11,7 @@ import type {
   CreateJobInput,
   JobRecord,
   JobType,
+  JobWithEvents,
   ListJobsResponse,
 } from '@/api/schemas/job.schema';
 import { NotFoundError } from '@/api/errors/app-error';
@@ -82,6 +83,18 @@ export class JobService {
     const job = await this.jobRepository.getById(jobId);
     if (!job) throw new NotFoundError(`Job ${jobId} not found`);
     return job;
+  }
+
+  public async getJobWithEvents(jobId: string): Promise<JobWithEvents> {
+    // Run both queries in parallel — they're independent reads
+    const [job, events] = await Promise.all([
+      this.jobRepository.getById(jobId),
+      this.eventRepository.findByJobId(jobId),
+    ]);
+
+    if (!job) throw new NotFoundError(`Job ${jobId} not found`);
+
+    return { ...job, events };
   }
 
   public async onJobActive(jobId: string, attempts: number): Promise<void> {

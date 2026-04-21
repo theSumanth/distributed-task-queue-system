@@ -24,6 +24,19 @@ export class JobsController {
     }
   };
 
+  public getJob = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const job = await this.jobService.getJobWithEvents(req.params.id);
+      sendSuccess(res, 200, job);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public listJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { status, type, page, limit } = req.query as unknown as ListJobsQuery;
