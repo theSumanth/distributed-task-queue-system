@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import type { JobService } from '@/services/job.service';
-import type { CreateJobInput } from '@/api/schemas/job.schema';
+import type { CreateJobInput, ListJobsQuery } from '@/api/schemas/job.schema';
 import { sendSuccess } from '../utils/response';
 
 export class JobsController {
@@ -17,9 +17,18 @@ export class JobsController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const input = req.body;
-      const job = await this.jobService.createJob(input);
+      const job = await this.jobService.createJob(req.body);
       sendSuccess(res, 201, job);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public listJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status, type, page, limit } = req.query as unknown as ListJobsQuery;
+      const result = await this.jobService.listJobs({ status, type }, { page, limit });
+      sendSuccess(res, 200, result);
     } catch (error) {
       next(error);
     }

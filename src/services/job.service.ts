@@ -1,27 +1,27 @@
 import { randomUUID } from 'node:crypto';
+
 import { withTransaction } from '@/database/client';
 
 import type { JobRepository } from '@/repositories/job.repository';
 import type { JobEventRepository } from '@/repositories/job-event.repository';
 import { OutboxRepository } from '@/repositories/outbox.repository';
+import type { ListJobsFilters, ListJobsPagination } from '@/repositories/job.repository';
 
-import type { CreateJobInput, JobRecord, JobType } from '@/api/schemas/job.schema';
+import type {
+  CreateJobInput,
+  JobRecord,
+  JobType,
+  ListJobsResponse,
+} from '@/api/schemas/job.schema';
 import { NotFoundError } from '@/api/errors/app-error';
 import { config } from '@/config';
 import { logger } from '@/core/logger';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
+    return { name: error.name, message: error.message, stack: error.stack };
   }
-  return {
-    message: 'Unknown error',
-    error,
-  };
+  return { message: 'Unknown error', error };
 };
 
 const nowIso = (): string => new Date().toISOString();
@@ -69,10 +69,7 @@ export class JobService {
         {
           aggregateId: jobId,
           type: 'job.enqueue',
-          payload: {
-            jobId,
-            ...input,
-          },
+          payload: { jobId, ...input },
         },
         client
       );
@@ -83,9 +80,7 @@ export class JobService {
 
   public async getJob(jobId: string): Promise<JobRecord> {
     const job = await this.jobRepository.getById(jobId);
-    if (!job) {
-      throw new NotFoundError(`Job ${jobId} not found`);
-    }
+    if (!job) throw new NotFoundError(`Job ${jobId} not found`);
     return job;
   }
 
@@ -100,6 +95,23 @@ export class JobService {
     await this.eventRepository.create(jobId, 'active', 'Job started', { attempts });
   }
 
+  public async listJobs(
+    filters: ListJobsFilters,
+    pagination: ListJobsPagination
+  ): Promise<ListJobsResponse> {
+    const { jobs, total } = await this.jobRepository.findAll(filters, pagination);
+
+    return {
+      jobs,
+      pagination: {
+        total,
+        page: pagination.page,
+        limit: pagination.limit,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    };
+  }
+
   public async onJobCompleted(
     jobId: string,
     type: JobType,
@@ -108,13 +120,7 @@ export class JobService {
   ): Promise<void> {
     await withTransaction(async (client) => {
       await this.jobRepository.updateState(
-        {
-          id: jobId,
-          status: 'completed',
-          result,
-          error: null,
-          completedAt: nowIso(),
-        },
+        { id: jobId, status: 'completed', result, error: null, completedAt: nowIso() },
         client
       );
       await this.eventRepository.create(
@@ -125,7 +131,7 @@ export class JobService {
         client
       );
     });
-    logger.info({ type }, 'job completed');
+    logger.info({ jobId, type, durationMs }, 'Job completed');
   }
 
   public async onJobFailed(
@@ -156,11 +162,7 @@ export class JobService {
         jobId,
         status,
         `Job ${isTerminal ? 'failed permanently' : 'retrying'}`,
-        {
-          attempts,
-          maxAttempts,
-          error: serialized,
-        },
+        { attempts, maxAttempts, error: serialized },
         client
       );
 
@@ -179,9 +181,9 @@ export class JobService {
           client
         );
       }
-
-      logger.info({ type, durationMs }, 'job failed');
     });
+
+    logger.info({ jobId, type, durationMs, isTerminal }, 'Job failed');
   }
 
   public async onJobStalled(jobId: string): Promise<void> {
