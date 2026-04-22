@@ -46,4 +46,17 @@ export class JobsController {
       next(error);
     }
   };
+
+  public cancelJob = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const job = await this.jobService.cancelJob(req.params.id);
+      sendSuccess(res, 200, job);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

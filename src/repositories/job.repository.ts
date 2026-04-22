@@ -215,4 +215,21 @@ export class JobRepository {
     const row = result.rows.at(0);
     return row ? mapRowDto(row) : null;
   }
+
+  public async cancel(id: string, client?: PoolClient): Promise<JobRecord | null> {
+    const executor = createExecutor(client);
+
+    const result = await executor.query<JobRow>(
+      `
+        UPDATE jobs
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = $1 AND status = 'queued'
+        RETURNING *
+      `,
+      [id]
+    );
+
+    const row = result.rows.at(0);
+    return row ? mapRowDto(row) : null;
+  }
 }

@@ -14,9 +14,10 @@ import type {
   JobWithEvents,
   ListJobsResponse,
 } from '@/api/schemas/job.schema';
-import { NotFoundError } from '@/api/errors/app-error';
+import { ConflictError, NotFoundError } from '@/api/errors/app-error';
 import { config } from '@/config';
 import { logger } from '@/core/logger';
+import { removeQueuedJob } from '@/core/queue/queue.producer';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
@@ -123,6 +124,50 @@ export class JobService {
         totalPages: Math.ceil(total / pagination.limit),
       },
     };
+  }
+
+  public async cancelJob(jobId: string): Promise<JobRecord> {
+    const job = await this.jobRepository.getById(jobId);
+    if (!job) throw new NotFoundError(`Job ${jobId} not found`);
+
+    if (job.status !== 'queued') {
+      throw new ConflictError(
+        `Cannot cancel job with status '${job.status}'. Only queued jobs can be cancelled.`,
+        { jobId }
+      );
+    }
+
+    return withTransaction(async (client) => {
+      // Optimistic DB lock — returns null if job moved out of 'queued' during this request
+      const cancelled = await this.jobRepository.cancel(jobId, client);
+      if (!cancelled) {
+        throw new ConflictError(
+          `Job ${jobId} could not be cancelled — it was picked up by a worker. ` +
+            `Check GET /jobs/${jobId} for current status.`,
+          { jobId }
+        );
+      }
+
+      // Best-effort BullMQ removal — job may have already been dequeued
+      const removedFromQueue = await removeQueuedJob(jobId);
+      if (!removedFromQueue) {
+        logger.warn(
+          { jobId },
+          'Job was cancelled in DB but not found in BullMQ — worker will skip it via status check'
+        );
+      }
+
+      await this.eventRepository.create(
+        jobId,
+        'cancelled',
+        'Job cancelled by user',
+        undefined,
+        client
+      );
+
+      logger.info({ jobId, type: cancelled.type }, 'Job cancelled');
+      return cancelled;
+    });
   }
 
   public async onJobCompleted(

@@ -158,7 +158,7 @@ export type ListJobsResponse = z.infer<typeof listJobsResponseSchema>;
 // ================================
 // GET JOBS — query param
 // ================================
-export const getJobQuerySchema = z.object({ id: z.uuid() });
+export const jobIdQuerySchema = z.object({ id: z.uuid() });
 
 // ================================
 // QUEUE INTERNALS (outbox → bullmq)

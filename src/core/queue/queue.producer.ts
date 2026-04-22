@@ -68,10 +68,9 @@ export const enqueueDeadLetter = async (payload: QueueJobPayload): Promise<void>
   });
 };
 
-export const removeQueuedJob = async (jobId: string): Promise<void> => {
+export const removeQueuedJob = async (jobId: string): Promise<boolean> => {
   const job = await getMainQueue().getJob(jobId);
-
-  if (!job) return;
-
+  if (!job) return false;
   await job.remove();
+  return true;
 };
