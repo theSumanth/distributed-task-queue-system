@@ -47,6 +47,16 @@ export interface UpdateJobStateInput {
   failedAt?: string | null;
 }
 
+export interface ListJobsFilters {
+  status?: JobStatus;
+  type?: JobType;
+}
+
+export interface ListJobsPagination {
+  page: number;
+  limit: number;
+}
+
 const mapRowDto = (row: JobRow): JobRecord => ({
   id: row.id,
   queueJobId: row.queue_job_id,
@@ -92,9 +102,7 @@ export class JobRepository {
     );
 
     const row = result.rows.at(0);
-    if (!row) {
-      throw new Error('Failed to create job record');
-    }
+    if (!row) throw new Error('Failed to create job record');
 
     return mapRowDto(row);
   }
@@ -102,11 +110,55 @@ export class JobRepository {
   public async getById(id: string, client?: PoolClient): Promise<JobRecord | null> {
     const executor = createExecutor(client);
     const result = await executor.query<JobRow>('SELECT * FROM jobs WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return null;
-    }
     const row = result.rows.at(0);
     return row ? mapRowDto(row) : null;
+  }
+
+  public async findAll(
+    filters: ListJobsFilters,
+    pagination: ListJobsPagination,
+    client?: PoolClient
+  ): Promise<{ jobs: JobRecord[]; total: number }> {
+    const { status, type } = filters;
+    const { page, limit } = pagination;
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = [];
+    const filterValues: unknown[] = [];
+
+    if (status) {
+      filterValues.push(status);
+      conditions.push(`status = $${filterValues.length}`);
+    }
+    if (type) {
+      filterValues.push(type);
+      conditions.push(`type = $${filterValues.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const executor = createExecutor(client);
+
+    const [countResult, dataResult] = await Promise.all([
+      executor.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM jobs ${whereClause}`,
+        filterValues
+      ),
+      executor.query<JobRow>(
+        `
+          SELECT * FROM jobs
+          ${whereClause}
+          ORDER BY created_at DESC
+          LIMIT $${filterValues.length + 1}
+          OFFSET $${filterValues.length + 2}
+        `,
+        [...filterValues, limit, offset]
+      ),
+    ]);
+
+    return {
+      jobs: dataResult.rows.map(mapRowDto),
+      total: parseInt(countResult.rows[0]?.count ?? '0', 10),
+    };
   }
 
   public async updateState(
@@ -145,9 +197,7 @@ export class JobRepository {
       updates.push(`failed_at = $${values.length}`);
     }
 
-    if (updates.length === 0) {
-      return this.getById(input.id);
-    }
+    if (updates.length === 0) return this.getById(input.id);
 
     updates.push('updated_at = NOW()');
 
@@ -162,9 +212,23 @@ export class JobRepository {
       values
     );
 
-    if (result.rows.length === 0) {
-      return null;
-    }
+    const row = result.rows.at(0);
+    return row ? mapRowDto(row) : null;
+  }
+
+  public async cancel(id: string, client?: PoolClient): Promise<JobRecord | null> {
+    const executor = createExecutor(client);
+
+    const result = await executor.query<JobRow>(
+      `
+        UPDATE jobs
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = $1 AND status = 'queued'
+        RETURNING *
+      `,
+      [id]
+    );
+
     const row = result.rows.at(0);
     return row ? mapRowDto(row) : null;
   }

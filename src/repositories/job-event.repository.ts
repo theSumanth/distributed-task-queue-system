@@ -47,4 +47,24 @@ export class JobEventRepository {
 
     return mapRowDto(row);
   }
+
+  public async findByJobId(jobId: string, client?: PoolClient): Promise<JobEventRecord[]> {
+    const executor = createExecutor(client);
+
+    const result = await executor.query<JobEventRow>(
+      `
+        SELECT * FROM job_events
+        WHERE job_id = $1
+        ORDER BY created_at ASC
+      `,
+      [jobId]
+    );
+
+    const rows = result.rows;
+    if (!rows) {
+      throw new Error('Failed to fetch job events');
+    }
+
+    return rows.map(mapRowDto);
+  }
 }
