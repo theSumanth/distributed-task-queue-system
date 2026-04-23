@@ -2,13 +2,27 @@ import { Worker } from 'bullmq';
 
 import { config, redactedConfig } from '@/config';
 import { logger } from '@/core/logger';
-import { getRedisConnection, closeRedisConnection } from '@/core/queue/redis.connection';
+import {
+  closeMetricsServer,
+  initializeMetrics,
+  recordWorkerJobCompleted,
+  recordWorkerJobFailed,
+  recordWorkerJobStalled,
+  recordWorkerJobStarted,
+  startMetricsServer,
+} from '@/core/metrics';
+import { getRedisConnection, closeRedisConnection, pingRedis } from '@/core/queue/redis.connection';
 import { closeDbPool } from '@/database/client';
 import { jobService } from '@/services';
 import type { QueueJobPayload } from '@/api/schemas/job.schema';
 import { processorRegistry } from '@/services/processor-registry';
 import { queueNames } from '@/core/queue/queue.factory';
 
+initializeMetrics('queue-worker');
+
+await pingRedis();
+
+const metricsServer = startMetricsServer('queue-worker', config.metrics.queueWorkerPort);
 const startedAtByJob = new Map<string, number>();
 
 const worker = new Worker<QueueJobPayload>(
@@ -62,6 +76,7 @@ worker.on('active', (job) => {
   );
 
   startedAtByJob.set(jobId, Date.now());
+  recordWorkerJobStarted(job.data.type);
 
   void jobService.onJobActive(job.data.jobId, job.attemptsMade + 1).catch((error) => {
     logger.error({ error, jobId: job.data.jobId }, 'Failed to persist active event');
@@ -73,6 +88,7 @@ worker.on('completed', (job, result) => {
   const startedAt = startedAtByJob.get(jobId) ?? Date.now();
   const durationMs = Date.now() - startedAt;
   startedAtByJob.delete(jobId);
+  recordWorkerJobCompleted(job.data.type, durationMs);
 
   logger.info(
     {
@@ -106,6 +122,7 @@ worker.on('failed', (job, error) => {
   const startedAt = startedAtByJob.get(jobId) ?? Date.now();
   const durationMs = Date.now() - startedAt;
   startedAtByJob.delete(jobId);
+  recordWorkerJobFailed(job.data.type, durationMs);
 
   const maxAttempts = job.opts.attempts ?? 1;
   const attempts = job.attemptsMade;
@@ -128,6 +145,7 @@ worker.on('stalled', (jobId) => {
   if (!jobId) {
     return;
   }
+  recordWorkerJobStalled();
   void jobService.onJobStalled(jobId).catch((error) => {
     logger.error({ error, jobId }, 'Failed to persist stalled event');
   });
@@ -138,7 +156,7 @@ const shutdown = async (signal: string): Promise<void> => {
 
   try {
     await worker.close();
-    await Promise.all([closeRedisConnection(), closeDbPool()]);
+    await Promise.all([closeMetricsServer(metricsServer), closeRedisConnection(), closeDbPool()]);
     logger.info('Worker shutdown complete');
     process.exit(0);
   } catch (error) {

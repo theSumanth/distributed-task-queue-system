@@ -1,6 +1,7 @@
-import { Queue } from 'bullmq';
+import { Queue, type JobType as BullMqJobType } from 'bullmq';
 
 import { config } from '@/config';
+import { registerQueueDepthCollector, unregisterQueueDepthCollector } from '@/core/metrics';
 import { getRedisConnection } from './redis.connection';
 import type { QueueJobPayload } from '@/api/schemas/job.schema';
 
@@ -11,6 +12,26 @@ export const queueNames = {
   main: config.queue.name,
   deadLetter: `${config.queue.name}_dead_letter`,
 } as const;
+
+const BULLMQ_JOB_COUNT_TYPES: BullMqJobType[] = [
+  'waiting',
+  'active',
+  'delayed',
+  'prioritized',
+  'waiting-children',
+  'completed',
+  'failed',
+  'paused',
+  'repeat',
+  'wait',
+];
+
+registerQueueDepthCollector(queueNames.main, () =>
+  getMainQueue().getJobCounts(...BULLMQ_JOB_COUNT_TYPES)
+);
+registerQueueDepthCollector(queueNames.deadLetter, () =>
+  getDeadLetterQueue().getJobCounts(...BULLMQ_JOB_COUNT_TYPES)
+);
 
 export const getMainQueue = (): Queue<QueueJobPayload> => {
   if (!mainQueue) {
@@ -32,10 +53,12 @@ export const getDeadLetterQueue = (): Queue<QueueJobPayload> => {
 
 export const closeQueues = async (): Promise<void> => {
   if (mainQueue) {
+    unregisterQueueDepthCollector(queueNames.main);
     await mainQueue.close();
     mainQueue = null;
   }
   if (deadLetterQueue) {
+    unregisterQueueDepthCollector(queueNames.deadLetter);
     await deadLetterQueue.close();
     deadLetterQueue = null;
   }
