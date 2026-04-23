@@ -50,6 +50,29 @@ export class OutboxRepository {
     return result.rows;
   }
 
+  public async getPendingBatch(limit: number, client?: PoolClient): Promise<OutboxEvent[]> {
+    const executor = createExecutor(client);
+    const result = await executor.query<OutboxEvent>(
+      `SELECT * FROM outbox_events
+     WHERE status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
+  public async lockAndFetchSingle(id: number, client: PoolClient): Promise<OutboxEvent | null> {
+    const executor = createExecutor(client);
+    const result = await executor.query<OutboxEvent>(
+      `SELECT * FROM outbox_events
+     WHERE id = $1 AND status = 'pending'
+     FOR UPDATE SKIP LOCKED`,
+      [id]
+    );
+    return result.rows.at(0) ?? null;
+  }
+
   public async markProcessed(id: number, client?: PoolClient): Promise<void> {
     const executor = createExecutor(client);
 
