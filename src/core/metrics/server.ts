@@ -32,11 +32,8 @@ export const startMetricsServer = (role: MetricsRole, port: number): http.Server
     logger.error({ error, role, host: config.metrics.host, port }, 'Metrics server error');
   });
 
-  server.listen(port, config.metrics.host, () => {
-    logger.info(
-      { role, host: config.metrics.host, port, path: config.metrics.path },
-      'Metrics server started'
-    );
+  server.listen(port, () => {
+    logger.info({ role, port, path: config.metrics.path }, 'Metrics server started');
   });
 
   return server;
