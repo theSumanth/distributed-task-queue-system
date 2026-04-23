@@ -24,7 +24,8 @@ const BACKOFF_BASE_MS = config.outbox.backoffBaseMs;
 
 initializeMetrics('outbox-worker');
 
-const metricsServer = startMetricsServer('outbox-worker', config.metrics.outboxWorkerPort);
+const port = Number(process.env['PORT'] || 4000);
+const metricsServer = startMetricsServer('outbox-worker', port);
 
 let isShuttingDown = false;
 
