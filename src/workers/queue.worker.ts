@@ -148,6 +148,7 @@ const start = async (): Promise<void> => {
     if (!jobId) {
       return;
     }
+    startedAtByJob.delete(jobId);
     recordWorkerJobStalled();
     void jobService.onJobStalled(jobId).catch((error) => {
       logger.error({ error, jobId }, 'Failed to persist stalled event');
