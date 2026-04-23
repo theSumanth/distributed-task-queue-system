@@ -11,6 +11,7 @@ import { parseQueueConfig } from './queue.config';
 import { parseOutboxConfig } from './outbox.config';
 import { parseQueueWorkerConfig } from './worker.config';
 import { parseFeaturesConfig } from './features.config';
+import { parseMetricsConfig } from './metrics.config';
 
 if (process.env['NODE_ENV'] !== 'production') {
   const envFile = `.env.${process.env['NODE_ENV'] || 'development'}`;
@@ -31,8 +32,9 @@ const parseConfig = () => {
     const outbox = parseOutboxConfig(process.env);
     const worker = parseQueueWorkerConfig(process.env);
     const features = parseFeaturesConfig(process.env);
+    const metrics = parseMetricsConfig(process.env);
 
-    return { app, database, security, logging, redis, queue, outbox, worker, features };
+    return { app, database, security, logging, redis, queue, outbox, worker, features, metrics };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(z.treeifyError(error).errors, 'Invalid environment variables:');
@@ -110,6 +112,16 @@ export const config = {
     format: env.logging.LOG_FORMAT,
   },
 
+  metrics: {
+    enabled: env.metrics.METRICS_ENABLED,
+    path: env.metrics.METRICS_PATH,
+    host: env.metrics.METRICS_HOST,
+    token: env.metrics.METRICS_TOKEN,
+    collectIntervalMs: env.metrics.METRICS_COLLECT_INTERVAL_MS,
+    queueWorkerPort: env.metrics.QUEUE_WORKER_METRICS_PORT,
+    outboxWorkerPort: env.metrics.OUTBOX_WORKER_METRICS_PORT,
+  },
+
   isDevelopment: env.app.NODE_ENV === 'development',
   isStaging: env.app.NODE_ENV === 'staging',
   isProduction: env.app.NODE_ENV === 'production',
@@ -124,6 +136,10 @@ export const redactedConfig = {
   redis: {
     ...config.redis,
     password: config.redis.password ? '***redacted***' : undefined,
+  },
+  metrics: {
+    ...config.metrics,
+    token: config.metrics.token ? '***redacted***' : undefined,
   },
 };
 

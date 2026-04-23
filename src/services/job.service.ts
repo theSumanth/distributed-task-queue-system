@@ -17,6 +17,12 @@ import type {
 import { ConflictError, NotFoundError } from '@/api/errors/app-error';
 import { config } from '@/config';
 import { logger } from '@/core/logger';
+import {
+  recordJobCancelled,
+  recordJobCreated,
+  recordJobExecutionDuration,
+  recordJobStateTransition,
+} from '@/core/metrics';
 import { removeQueuedJob } from '@/core/queue/queue.producer';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
@@ -49,7 +55,7 @@ export class JobService {
   public async createJob(input: CreateJobInput): Promise<JobRecord> {
     const jobId = randomUUID();
 
-    return withTransaction(async (client) => {
+    const created = await withTransaction(async (client) => {
       const created = await this.jobRepository.create(
         {
           id: jobId,
@@ -78,6 +84,11 @@ export class JobService {
 
       return created;
     });
+
+    recordJobCreated(created.type, created.priority);
+    recordJobStateTransition(created.type, created.status);
+
+    return created;
   }
 
   public async getJob(jobId: string): Promise<JobRecord> {
@@ -100,13 +111,14 @@ export class JobService {
 
   public async onJobActive(jobId: string, attempts: number): Promise<void> {
     // const job = await this.getJob(jobId);
-    await this.jobRepository.updateState({
+    const updated = await this.jobRepository.updateState({
       id: jobId,
       status: 'active',
       attempts,
       startedAt: nowIso(),
     });
     await this.eventRepository.create(jobId, 'active', 'Job started', { attempts });
+    if (updated) recordJobStateTransition(updated.type, 'active');
   }
 
   public async listJobs(
@@ -131,16 +143,18 @@ export class JobService {
     if (!job) throw new NotFoundError(`Job ${jobId} not found`);
 
     if (job.status !== 'queued') {
+      recordJobCancelled(job.type, 'conflict');
       throw new ConflictError(
         `Cannot cancel job with status '${job.status}'. Only queued jobs can be cancelled.`,
         { jobId }
       );
     }
 
-    return withTransaction(async (client) => {
+    const cancelled = await withTransaction(async (client) => {
       // Optimistic DB lock — returns null if job moved out of 'queued' during this request
       const cancelled = await this.jobRepository.cancel(jobId, client);
       if (!cancelled) {
+        recordJobCancelled(job.type, 'conflict');
         throw new ConflictError(
           `Job ${jobId} could not be cancelled — it was picked up by a worker. ` +
             `Check GET /jobs/${jobId} for current status.`,
@@ -168,6 +182,10 @@ export class JobService {
       logger.info({ jobId, type: cancelled.type }, 'Job cancelled');
       return cancelled;
     });
+
+    recordJobCancelled(cancelled.type, 'success');
+    recordJobStateTransition(cancelled.type, 'cancelled');
+    return cancelled;
   }
 
   public async onJobCompleted(
@@ -189,6 +207,8 @@ export class JobService {
         client
       );
     });
+    recordJobStateTransition(type, 'completed');
+    recordJobExecutionDuration(type, 'success', durationMs);
     logger.info({ jobId, type, durationMs }, 'Job completed');
   }
 
@@ -241,10 +261,13 @@ export class JobService {
       }
     });
 
+    recordJobStateTransition(type, status);
+    recordJobExecutionDuration(type, isTerminal ? 'terminal' : 'retry', durationMs);
     logger.info({ jobId, type, durationMs, isTerminal }, 'Job failed');
   }
 
   public async onJobStalled(jobId: string): Promise<void> {
     await this.eventRepository.create(jobId, 'retrying', 'Job stalled');
+    recordJobStateTransition('unknown', 'retrying');
   }
 }

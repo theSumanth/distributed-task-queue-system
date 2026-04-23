@@ -1,5 +1,6 @@
 import { config } from '@/config';
-import { getMainQueue, getDeadLetterQueue } from './queue.factory';
+import { startQueueOperationTimer } from '@/core/metrics';
+import { getMainQueue, getDeadLetterQueue, queueNames } from './queue.factory';
 
 import type { CreateJobInput, JobPriority, QueueJobPayload } from '@/api/schemas/job.schema';
 
@@ -24,6 +25,7 @@ export const enqueueJob = async (
     maxRetries?: number;
   }
 ): Promise<void> => {
+  const finish = startQueueOperationTimer(queueNames.main, 'enqueue');
   const runAtMs = input.runAt ? new Date(input.runAt).getTime() : undefined;
   const now = Date.now();
 
@@ -32,45 +34,70 @@ export const enqueueJob = async (
 
   const delay = Math.max(input.delayMs, runAtDelayMs);
 
-  await getMainQueue().add(
-    input.type,
-    {
-      jobId,
-      type: input.type,
-      payload: input.payload,
-      maxRetries: input.maxRetries ?? config.queue.maxRetries,
-    },
-    {
-      jobId,
-
-      attempts: (input.maxRetries ?? config.queue.maxRetries) + 1,
-
-      backoff: {
-        type: config.queue.backoff.type,
-        delay: config.queue.backoff.delayMs,
+  try {
+    await getMainQueue().add(
+      input.type,
+      {
+        jobId,
+        type: input.type,
+        payload: input.payload,
+        maxRetries: input.maxRetries ?? config.queue.maxRetries,
       },
+      {
+        jobId,
 
-      priority: priorityToBullValue(input.priority),
+        attempts: (input.maxRetries ?? config.queue.maxRetries) + 1,
 
-      delay,
+        backoff: {
+          type: config.queue.backoff.type,
+          delay: config.queue.backoff.delayMs,
+        },
 
-      removeOnComplete: config.queue.removeOnComplete,
-      removeOnFail: config.queue.removeOnFail,
-    }
-  );
+        priority: priorityToBullValue(input.priority),
+
+        delay,
+
+        removeOnComplete: config.queue.removeOnComplete,
+        removeOnFail: config.queue.removeOnFail,
+      }
+    );
+    finish('success');
+  } catch (error) {
+    finish('error');
+    throw error;
+  }
 };
 
 export const enqueueDeadLetter = async (payload: QueueJobPayload): Promise<void> => {
-  await getDeadLetterQueue().add(payload.type, payload, {
-    jobId: payload.jobId,
-    removeOnComplete: config.queue.removeOnComplete,
-    removeOnFail: config.queue.removeOnFail,
-  });
+  const finish = startQueueOperationTimer(queueNames.deadLetter, 'enqueue_dead_letter');
+
+  try {
+    await getDeadLetterQueue().add(payload.type, payload, {
+      jobId: payload.jobId,
+      removeOnComplete: config.queue.removeOnComplete,
+      removeOnFail: config.queue.removeOnFail,
+    });
+    finish('success');
+  } catch (error) {
+    finish('error');
+    throw error;
+  }
 };
 
 export const removeQueuedJob = async (jobId: string): Promise<boolean> => {
-  const job = await getMainQueue().getJob(jobId);
-  if (!job) return false;
-  await job.remove();
-  return true;
+  const finish = startQueueOperationTimer(queueNames.main, 'remove');
+
+  try {
+    const job = await getMainQueue().getJob(jobId);
+    if (!job) {
+      finish('not_found');
+      return false;
+    }
+    await job.remove();
+    finish('success');
+    return true;
+  } catch (error) {
+    finish('error');
+    throw error;
+  }
 };

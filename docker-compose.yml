@@ -59,6 +59,8 @@ services:
     command: ['node', 'dist/workers/queue.worker.cjs']
     env_file:
       - .env.development
+    expose:
+      - '9101'
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -73,6 +75,8 @@ services:
     command: ['node', 'dist/workers/outbox.worker.cjs']
     env_file:
       - .env.development
+    expose:
+      - '9102'
     depends_on:
       migrate:
         condition: service_completed_successfully
