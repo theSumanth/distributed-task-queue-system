@@ -136,7 +136,7 @@ The **Distributed Task Queue System** is a production-grade job queue implementa
                                         │ │ Generic Handler    │   │
                                         │ │ Processor Registry │   │
                                         │ └────────────────────┘   │
-                                        │ Metrics: :9101/metrics   │
+                                        │ Metrics: :8080/metrics   │
                                         └──────────────────────────┘
 
 Outbox Pattern Implementation:
@@ -523,8 +523,8 @@ METRICS_PATH=/metrics                     # Path for metrics endpoint
 METRICS_HOST=0.0.0.0                      # Host for metrics server
 METRICS_TOKEN=                            # Bearer token for metrics endpoint (optional)
 METRICS_COLLECT_INTERVAL_MS=15000         # Metrics collection interval
-QUEUE_WORKER_METRICS_PORT=9101            # Queue worker metrics port
-OUTBOX_WORKER_METRICS_PORT=9102           # Outbox worker metrics port
+QUEUE_WORKER_METRICS_PORT=8080            # Queue worker metrics port
+OUTBOX_WORKER_METRICS_PORT=8080           # Outbox worker metrics port
 ```
 
 #### Features (`features.config.ts`)
@@ -924,7 +924,7 @@ All metrics are prefixed with `task_queue_` and include service, environment, an
 - `task_queue_job_execution_duration_seconds` - Job execution time
 - Node.js default metrics (memory, CPU, event loop, etc.)
 
-#### Queue Worker Metrics (Port 9101/metrics)
+#### Queue Worker Metrics (Port 8080/metrics)
 
 - `task_queue_queue_operation_duration_seconds` - Queue operation timing
 - `task_queue_queue_depth` - Jobs waiting by state
@@ -934,7 +934,7 @@ All metrics are prefixed with `task_queue_` and include service, environment, an
 - `task_queue_worker_job_stalled_total` - Stalled jobs
 - Node.js default metrics
 
-#### Outbox Worker Metrics (Port 9102/metrics)
+#### Outbox Worker Metrics (Port 8080/metrics)
 
 - `task_queue_outbox_batch_size` - Jobs per batch
 - `task_queue_outbox_poll_duration_seconds` - Polling interval timing
